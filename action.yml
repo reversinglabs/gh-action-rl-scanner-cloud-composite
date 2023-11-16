@@ -1,0 +1,145 @@
+name: 'gh-action-rl-scanner-cloud-composite'
+author: 'ReversingLabs'
+description: 'Scan an artifact with ReversingLabs secure.software Portal'
+
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+# we expect 'RLPORTAL_ACCESS_TOKEN' to be defined as a secret and available in the enviroment
+
+inputs:
+  rl-verbose:
+    description: 'Make the scanner more verbose'
+    required: false
+    default: false
+    # type: bool
+
+  artifact-to-scan:
+    description: 'Path to the package file (artifact) you want to scan'
+    required: true
+    # type: string
+
+  rl-portal-server:
+    description: 'the server namespace used for your company'
+    required: true
+    # type: string
+  rl-portal-org:
+    description: 'the organisation set up on the portal server for your company'
+    required: true
+    # type: string
+  rl-portal-group:
+    description: 'the group you want the scan to use (you must be a member of that group)'
+    required: true
+    # type: string
+
+  rl-package-url:
+    description: 'A package url to use for this scan'
+    required: false
+    default: ""
+    # type: string
+  rl-diff-with:
+    description: 'Perform a diff scan against the provided version'
+    required: false
+    default: ""
+    # type: string
+
+  rl-submit-only:
+    description: 'Optionally do not wait for the scan result: bool: default False'
+    required: false
+    default: false
+    # type: bool
+
+  rl-timeout:
+    description: 'Amount of time (in minutes), the user is willing to wait for analysis before failing'
+    required: false
+    default: 20
+    # type: int
+
+  rl-proxy-server:
+    description: 'An optional proxy server to use'
+    required: false
+    default: ""
+    # type: string
+  rl-proxy-port:
+    description: 'An optional proxy server port to use'
+    required: false
+    default: ""
+    # type: string
+  rl-proxy-user:
+    description: 'An optional proxy server user to use'
+    required: false
+    default: ""
+    # type: string
+  rl-proxy-password:
+    description: 'An optional proxy server password to use'
+    required: false
+    default: ""
+    # type: string
+
+outputs:
+  description:
+    description: 'The result of the action: a string terminating in FAIL or PASS'
+    value: ${{ steps.rl-scan.outputs.description }}
+  status:
+    description: 'The single word result of the action: success, failure or error'
+    value: ${{ steps.rl-scan.outputs.status }}
+
+runs:
+  using: "composite"
+
+  steps:
+    # -------------------------------------------
+    # Set the analysis status to pending
+    - name: Set the pending status
+      uses: ouzi-dev/commit-status-updater@219d3f932547cad092e384c7a36bf4d963739c35 # v2.0.1
+      with:
+        addHoldComment: "true"
+
+    # -------------------------------------------
+    # Run the reversinglabs/rl-scanner-cloud
+    - name: ReversingLabs apply rl-scanner-cloud to the build artifact
+      id: rl-scan
+      uses: reversinglabs/gh-action-rl-scanner-cloud-only@v1
+      with: # we expect RLPORTAL_ACCESS_TOKEN to be set in the environment
+        rl-verbose: ${{ inputs.rl-verbose }}
+        rl-portal-server: ${{ inputs.rl-portal-server }}
+        rl-portal-org: ${{ inputs.rl-portal-org }}
+        rl-portal-group: ${{ inputs.rl-portal-group }}
+        artifact-to-scan: ${{ inputs.artifact-to-scan }}
+        rl-package-url: ${{ inputs.rl-package-url }}
+        rl-diff-with: ${{ inputs.rl-diff-with }}
+        rl-submit-only: ${{ inputs.rl-submit-only }}
+        rl-timeout: ${{ inputs.rl-timeout }}
+        rl-proxy-server: ${{ inputs.rl-proxy-server }}
+        rl-proxy-port: ${{ inputs.rl-proxy-port }}
+        rl-proxy-user: ${{ inputs.rl-proxy-user }}
+        rl-proxy-password: ${{ inputs.rl-proxy-password }}
+
+    # -------------------------------------
+    # Update the status from pending to failure/success and set the descriptive text
+    - name: Set the analysis status
+      if: success() || failure()
+      uses: ouzi-dev/commit-status-updater@219d3f932547cad092e384c7a36bf4d963739c35 # v2.0.1
+      with:
+        addHoldComment: "true"
+        description: ${{ steps.rl-scan.outputs.description }}
+        status: ${{ steps.rl-scan.outputs.status }}
+
+    # -------------------------------------
+    # Return the proper exit status
+    - name: Set the exit status
+      if: always()
+      shell: bash
+      run: |
+        case "${{ steps.rl-scan.outputs.status }}" in
+        success)
+          exit 0
+          ;;
+        failure)
+          exit 1
+          ;;
+        *)
+          exit 101
+          ;;
+        esac
