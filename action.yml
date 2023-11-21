@@ -1,4 +1,4 @@
-name: 'test-gh-action-rl-scanner-cloud-composite-dev'
+name: 'gh-action-rl-scanner-cloud-composite'
 author: 'ReversingLabs'
 description: 'Scan an artifact with ReversingLabs secure.software Portal'
 
