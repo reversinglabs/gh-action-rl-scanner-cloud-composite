@@ -33,21 +33,32 @@ With the secure.software Portal, you can:
 # How this action works
 
 The `rl-scanner-cloud-composite` action relies on a few different
-[contexts](https://docs.github.com/en/actions/learn-github-actions/contexts) to access and reuse information across its steps, and on the following external action:
+[contexts](https://docs.github.com/en/actions/learn-github-actions/contexts) to access and reuse information across its steps,
+and on the following external actions:
 
 - **ouzi-dev/commit-status-updater**
+- **actions/upload-artifact**
+- **github/codeql-action/upload-sarif**
 
-The action expects that the build artifact is produced in the current workspace before the action is called.
+
+This action expects that the build artifact is produced in the current workspace before the action is called.
 It requires specifying the path of the artifact as the input to the action.
 The path must be relative to the `github.workspace`.
 
+Optionally, users can specify the report directory.
+If it is specified, the action saves all supported analysis report formats for the artifact into the directory.
+The report directory path must be relative to the `github.workspace`.
+If the report directory is not specified, the action saves the analysis reports into the default directory.
+
 When called, the action runs the following steps:
 
-- Set the commit status to pending
-- Pull the latest version of the `reversinglabs/rl-scanner-cloud` Docker image
-- Connect to a secure.software Portal instance from the container and upload the artifact to the Portal for scanning
-- Change the commit status from pending to success/failure depending on the scan result with a descriptive message
-- Return the exit status. This allows controlling any subsequent or dependent tasks; for example, blocking the merge if the status is not "success"
+- Set the commit status to pending.
+- Pull the latest version of the `reversinglabs/rl-scanner-cloud` Docker image.
+- Connect to a secure.software Portal instance from the container and upload the artifact to the Portal for scanning.
+- Upload the analysis report to GitHub as `report-sha`, where `sha` corresponds to the SHA identifier of the commit or PR that triggered the action. This makes the report names unique and helps relate them to specific commits if necessary.
+- Upload the SARIF report file as `report.sarif.json` to the report directory.
+- Change the commit status from pending to success/failure depending on the scan result with a descriptive message.
+- Return the exit status. This allows controlling any subsequent or dependent tasks; for example, blocking the merge if the status is not "success".
 
 
 ## Requirements
@@ -114,7 +125,8 @@ If the proxy requires authentication, the proxy credentials for authentication c
 | `rl-portal-server`  | **Yes** | Name of the secure.software Portal instance to use for the scan. The Portal instance name usually matches the subdirectory of `my.secure.software` in your Portal URL. For example, if your portal URL is `my.secure.software/demo`, the instance name to use with this parameter is `demo`. |
 | `rl-portal-org`     | **Yes** | The name of a secure.software Portal organization to use for the scan. The organization must exist on the Portal instance specified with `rl-portal-server`. The user account authenticated with the token must be a member of the specified organization and have the appropriate permissions to upload and scan a file. Organization names are case-sensitive. |
 | `rl-portal-group`   | **Yes** | The name of a secure.software Portal group to use for the scan. The group must exist in the Portal organization specified with `rl-portal-org`. Group names are case-sensitive. |
-| `rl-package-url`    | **Yes**  | The package URL (PURL) used to associate the build artifact with a project and package on the Portal. PURLs are unique identifiers in the format `<project></package><@version>`. When scanning a build artifact, you must assign a PURL to it, so that it can be placed into the specified project and package as a version. If the project and package you specified don't exist in the Portal, they will be automatically created.  |
+| `rl-package-url`    | **Yes**  | The package URL (PURL) used to associate the build artifact with a project and package on the Portal. PURLs are unique identifiers in the format `<project></package><@version>`. When scanning a build artifact, you must assign a PURL to it, so that it can be placed into the specified project and package as a version. If the project and package you specified don't exist in the Portal, they will be automatically created. |
+ `report-path`       | No  | The directory where the action will store analysis reports for the build artifact. The directory must be empty. Provide the directory path relative to the `github.workspace`. Default value is `MyReportDir`. If you specify an empty string ("") as the value, report downloads will be disabled and no reports will be downloaded. |
 | `rl-diff-with`      | No  | This optional parameter lets you specify a previous version against which you want to compare (diff) the artifact version you're scanning. The specified version must exist in the same project and package as the artifact you're scanning. |
 | `rl-timeout`        | No  | This optional parameter lets you specify how long to wait for analysis to complete before failing (in minutes). The parameter accepts any integer from 10 to 1440. The default timeout is 20 minutes. |
 | `rl-submit-only`    | No  | Set to `true` to skip waiting for the analysis result. The default is `false`. |
@@ -161,6 +173,10 @@ Portal users can then view the analysis report and [manage the analyzed file](ht
         permissions:
           statuses: write
           pull-requests: write
+          # The next 3 permissions are used for SARIF report upload
+          security-events: write
+          actions: read
+          contents: read
 
         steps:
           # Need to check out data before we can do anything
@@ -188,7 +204,15 @@ Portal users can then view the analysis report and [manage the analyzed file](ht
               RLPORTAL_ACCESS_TOKEN: ${{ secrets.RLPORTAL_ACCESS_TOKEN }}
             uses: reversinglabs/gh-action-rl-scanner-cloud-composite@v1
             with:
+              rl-verbose: true
+              rl-portal-server: guidedTour
+              rl-portal-org: ReversingLabs
+              rl-portal-group: Demo
+              rl-timeout: 20
+              rl-submit-only: false
               artifact-to-scan: ${{ steps.build.outputs.scanfile }}
+              report-path: MyReportsDirectory
+              rl-package-url: my-project/my-package@1.0
 
 
 # Useful resources
