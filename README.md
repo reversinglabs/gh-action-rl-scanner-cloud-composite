@@ -180,7 +180,7 @@ Portal users can then view the analysis report and [manage the analyzed file](ht
 
         steps:
           # Need to check out data before we can do anything
-          - uses: actions/checkout@v3
+          - uses: actions/checkout@v4
 
           # Replace this step with your build process.
           # Need to produce one file as the build artifact in scanfile=<relative file path>.
