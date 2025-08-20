@@ -136,6 +136,13 @@ If the proxy requires authentication, the proxy credentials for authentication c
 | `rl-proxy-user`     | No  | User name for proxy authentication. |
 | `rl-proxy-password` | No  | Password for proxy authentication. Required if `rl-proxy-user` is used. |
 
+The `report-path` will now also hold the `RL-SAFE archive`.
+
+The [RL-SAFE archive](https://docs.secure.software/concepts/analysis-reports#rl-safe-archive)
+is a convenient way to get the full SAFE report and all other supported report formats for a software package in a single file.
+The archive can be freely shared and moved between different computers, and viewed without requiring a Spectra Assure product license.
+To open the archive and work with it, you need the [SAFE Viewer](https://docs.secure.software/safe-viewer) - a free, cross-platform tool developed by ReversingLabs.
+The RL-SAFE archive is named report.rl-safe and stored in `report-path`
 
 ## Outputs
 
@@ -221,4 +228,3 @@ Portal users can then view the analysis report and [manage the analyzed file](ht
 - The official [Spectra Assure Portal documentation](https://docs.secure.software/portal/)
 - The [rl-scanner-cloud-only](https://github.com/reversinglabs/gh-action-rl-scanner-cloud-only) GitHub Action
 - Introduction to [secure software release processes](https://www.reversinglabs.com/solutions/secure-software-release-processes) with ReversingLabs
-
